@@ -5,16 +5,23 @@ date:   2023-10-21 10:05:20 -0400
 categories: jekyll update
 ---
 
-Github: https://github.com/jlogan03/strobe
-Docs: https://docs.rs/crate/strobe/latest
-Benchmark plots: https://github.com/jlogan03/strobe/pull/6
+
+## Overview
+* Github: https://github.com/jlogan03/strobe
+* Docs: https://docs.rs/crate/strobe/latest
+* Benchmarks: https://github.com/jlogan03/strobe/pull/6
 
 Strobe provides fast, low-memory, elementwise array expressions on the stack.
-It is compatible with no-std (and no-alloc) environments, but _can_ allocate
+It is compatible with **no-std** (and **no-alloc**) environments, but _can_ allocate
 for outputs as a convenience.
-Its only required dependencies are `num-traits`, `libm`, and rust core.
+Its only required dependencies are `num-traits`, `libm`, and rust `core`.
 
-For large source arrays in nontrivial expressions, it is also about 2-3x faster 
+In essence, this allows a similar pattern to operating over chunks of input
+arrays, but extends this to **expressions of arbitrary depth**, and provides
+useful guarantees to the compiler while **eliminating the need for allocation**
+of intermediate results.
+
+For large source arrays in nontrivial expressions, it is about **2-3x faster** 
 than the usual method for ergonomic array operations (allocating storage for each
 intermediate result).
 
@@ -22,6 +29,8 @@ In fact, because it provides guarantees about the size and
 memory alignment of the chunks of data over which it operates, it is even faster 
 than performing array operations with the full intermediate arrays pre-allocated.
 
+## Benchmarks
+# Criterion
 This is demonstrated in a set of benchmarks run using Criterion, which
 makes every effort to warm up the system in order to reduce the overhead
 associated with heap allocations. Three categories of benchmarks are run,
@@ -38,7 +47,7 @@ gives a comparison that is more relevant to common use cases.
 By the time we reach 4 multiplication operations in an expression, strobe sees about double
 the throughput of the other methods for array sizes larger than about 1e5 elements, and is
 only slightly slower than the fastest alternative for smaller sizes. The benefit for large
-array operations is large, and the penalty for small ones is minimal.
+array operations is large, and the penalty for small ones is small.
 
 ![4x mul in an expression](https://user-images.githubusercontent.com/1596770/270112797-8b037c34-82d2-4582-b5b8-ce407e75575a.png)
 
@@ -48,12 +57,82 @@ is about 3x worse than just doing a contiguous slice operation:
 ![gratuitous use for a single mul](https://user-images.githubusercontent.com/1596770/270112744-6d06ab50-0432-468e-ba96-fbbdc82a4f63.png)
 
 The above results are obtained with a 2018 Macbook Pro (Intel x86). Similar scalings are obtained
-with a Ryzen 5 3600, with slight differences in the crossover point between methods likely due to
+with a Ryzen 5 3600, with slight differences in the crossover point between methods, likely due to
 differences in cache size and memory performance. Results from both systems used for benchmarking
 and for more calculations are available [here](https://github.com/jlogan03/strobe/pull/6).
 
-{% highlight rust %}
-{% endhighlight %}
+# Cachegrind
+Unit tests use arrays of size 67, 3 more than the intermediate storage size of 64, in order to
+make sure that we visit the behavior of the system when it sees storage that is neither full
+nor empty in a given cycle. The first 64 values will be consistently vectorized and cached properly,
+as will the first two in the group of 3 values, so we can expect around 1/66th (1.5%) of the evaluations to
+miss the cache due to swapping from the vector loop to the scalar loop. Cachegrind run over the unit tests
+confirms this napkin estimate:
+
+```
+jlogan@jlogan-MS-7C56:~/git/strobe$ valgrind --tool=cachegrind ./target/release/deps/strobe-5cb1bc954f8de3f1
+==24414== Cachegrind, a cache and branch-prediction profiler
+==24414== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.
+==24414== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==24414== Command: ./target/release/deps/strobe-5cb1bc954f8de3f1
+==24414== 
+--24414-- warning: L3 cache found, using its data for the LL simulation.
+
+running 33 tests
+test test::test_atanh ... ok
+test test::test_asinh ... ok
+test test::test_atan ... ok
+test test::test_add ... ok
+test test::test_asin ... ok
+test test::test_acos ... ok
+test test::test_atan2 ... ok
+test test::test_abs ... ok
+test test::test_acosh ... ok
+test test::test_cos ... ok
+test test::test_cosh ... ok
+test test::test_div ... ok
+test test::test_exp ... ok
+test test::test_from_iterator ... ok
+test test::test_from_slice ... ok
+test test::test_from_vec ... ok
+test test::test_log10 ... ok
+test test::test_log2 ... ok
+test test::test_mul ... ok
+test test::test_mul_2x ... ok
+test test::test_mul_3x ... ok
+test test::test_mul_add ... ok
+test test::test_mul_binary ... ok
+test test::test_mul_by_sum ... ok
+test test::test_mul_scalar ... ok
+test test::test_powf ... ok
+test test::test_sin ... ok
+test test::test_sinh ... ok
+test test::test_sub ... ok
+test test::test_sum ... ok
+test test::test_tan ... ok
+test test::test_tanh ... ok
+test test_std::test_std ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+==24414== 
+==24414== I   refs:      1,992,045
+==24414== I1  misses:       22,729
+==24414== LLi misses:        4,408
+==24414== I1  miss rate:      1.14%
+==24414== LLi miss rate:      0.22%
+==24414== 
+==24414== D   refs:        736,224  (451,692 rd   + 284,532 wr)
+==24414== D1  misses:       15,937  (  8,971 rd   +   6,966 wr)
+==24414== LLd misses:        7,806  (  3,756 rd   +   4,050 wr)
+==24414== D1  miss rate:       2.2% (    2.0%     +     2.4%  )
+==24414== LLd miss rate:       1.1% (    0.8%     +     1.4%  )
+==24414== 
+==24414== LL refs:          38,666  ( 31,700 rd   +   6,966 wr)
+==24414== LL misses:        12,214  (  8,164 rd   +   4,050 wr)
+==24414== LL miss rate:        0.4% (    0.3%     +     1.4%  )
+
+```
 
 <head>
   {% include 2023-10-21/include.html %}
