@@ -80,37 +80,7 @@ jlogan@jlogan-MS-7C56:~/git/strobe$ valgrind --tool=cachegrind ./target/release/
 
 running 33 tests
 test test::test_atanh ... ok
-test test::test_asinh ... ok
-test test::test_atan ... ok
-test test::test_add ... ok
-test test::test_asin ... ok
-test test::test_acos ... ok
-test test::test_atan2 ... ok
-test test::test_abs ... ok
-test test::test_acosh ... ok
-test test::test_cos ... ok
-test test::test_cosh ... ok
-test test::test_div ... ok
-test test::test_exp ... ok
-test test::test_from_iterator ... ok
-test test::test_from_slice ... ok
-test test::test_from_vec ... ok
-test test::test_log10 ... ok
-test test::test_log2 ... ok
-test test::test_mul ... ok
-test test::test_mul_2x ... ok
-test test::test_mul_3x ... ok
-test test::test_mul_add ... ok
-test test::test_mul_binary ... ok
-test test::test_mul_by_sum ... ok
-test test::test_mul_scalar ... ok
-test test::test_powf ... ok
-test test::test_sin ... ok
-test test::test_sinh ... ok
-test test::test_sub ... ok
-test test::test_sum ... ok
-test test::test_tan ... ok
-test test::test_tanh ... ok
+...(truncated)...
 test test_std::test_std ... ok
 
 test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
