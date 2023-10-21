@@ -22,7 +22,7 @@ title: James Logan's Blog
 email: jlogan03@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Cats, plants, instrumentation, and optimization
-baseurl: "/blog" # the subpath of your site, e.g. /blog
+baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://jlogan03.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  jlogan03
 mastodon:
