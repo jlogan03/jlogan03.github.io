@@ -65,7 +65,7 @@ and for more calculations are available [here](https://github.com/jlogan03/strob
 Unit tests use arrays of size 67, 3 more than the intermediate storage size of 64, in order to
 make sure that we visit the behavior of the system when it sees storage that is neither full
 nor empty in a given cycle. The first 64 values will be consistently vectorized and cached properly,
-as will the first two in the group of 3 values, so we can expect around 1/66th (1.5%) of the evaluations to
+as will the first two in the group of 3 values, so we can expect around 1/67th (1.5%) of the evaluations to
 miss the cache due to swapping from the vector loop to the scalar loop. Cachegrind run over the unit tests
 confirms this napkin estimate:
 
@@ -103,6 +103,9 @@ test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 ==24414== LL miss rate:        0.4% (    0.3%     +     1.4%  )
 
 ```
+
+# Tooling
+
 
 <head>
   {% include 2023-10-21/include.html %}
