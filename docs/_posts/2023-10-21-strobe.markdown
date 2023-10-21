@@ -1,14 +1,60 @@
 ---
 layout: post
-title:  "Strobe: Fast, low-memory, elementwise array expressions on the stack"
+title:  "Strobe Crate"
 date:   2023-10-21 10:05:20 -0400
 categories: jekyll update
 ---
 
+Github: https://github.com/jlogan03/strobe
+Docs: https://docs.rs/crate/strobe/latest
+Benchmark plots: https://github.com/jlogan03/strobe/pull/6
+
+Strobe provides fast, low-memory, elementwise array expressions on the stack.
+It is compatible with no-std (and no-alloc) environments, but _can_ allocate
+for outputs as a convenience.
+Its only required dependencies are `num-traits`, `libm`, and rust core.
+
+For large source arrays in nontrivial expressions, it is also about 2-3x faster 
+than the usual method for ergonomic array operations (allocating storage for each
+intermediate result).
+
+In fact, because it provides guarantees about the size and
+memory alignment of the chunks of data over which it operates, it is even faster 
+than performing array operations with the full intermediate arrays pre-allocated.
+
+This is demonstrated in a set of benchmarks run using Criterion, which
+makes every effort to warm up the system in order to reduce the overhead
+associated with heap allocations. Three categories of benchmarks are run,
+each evaluating the same mathematical operations over the same data:
+1. Slice-style vectorization, allocating for each intermediate result & the output
+2. Slice-style vectorization, evaluating intermediate results into pre-allocated storage,
+   then allocating once for the output
+3. Strobe, using fixed-size intermediate storage on the stack, then allocating once for the output
+
+While the allocation for the output array might give an unnecessarily pessimistic view of
+the maximum throughput of the pre-allocated and Strobe versions of the calc, I believe this
+gives a comparison that is more relevant to common use cases.
+
+By the time we reach 4 multiplication operations in an expression, strobe sees about double
+the throughput of the other methods for array sizes larger than about 1e5 elements, and is
+only slightly slower than the fastest alternative for smaller sizes. The benefit for large
+array operations is large, and the penalty for small ones is minimal.
+
+![4x mul in an expression](https://user-images.githubusercontent.com/1596770/270112797-8b037c34-82d2-4582-b5b8-ce407e75575a.png)
+
+The worst case, where Strobe is used gratuitously for a single operation with a small array,
+is about 3x worse than just doing a contiguous slice operation:
+
+![gratuitous use for a single mul](https://user-images.githubusercontent.com/1596770/270112744-6d06ab50-0432-468e-ba96-fbbdc82a4f63.png)
+
+The above results are obtained with a 2018 Macbook Pro (Intel x86). Similar scalings are obtained
+with a Ryzen 5 3600, with slight differences in the crossover point between methods likely due to
+differences in cache size and memory performance. Results from both systems used for benchmarking
+and for more calculations are available [here](https://github.com/jlogan03/strobe/pull/6).
+
 {% highlight rust %}
-fn main() -> ! {}
 {% endhighlight %}
 
 <head>
-  {% include 2023-10-21/asdf.html %}
+  {% include 2023-10-21/include.html %}
 </head>
