@@ -67,7 +67,7 @@ make sure that we visit the behavior of the system when it sees storage that is 
 nor empty in a given cycle. The first 64 values will be consistently vectorized and cached properly,
 as will the first two in the group of 3 values, so we can expect around 1/67th (1.5%) of the evaluations to
 miss the cache due to swapping from the vector loop to the scalar loop. Cachegrind run over the unit tests
-confirms this napkin estimate:
+supports this napkin estimate:
 
 ```
 jlogan@jlogan-MS-7C56:~/git/strobe$ valgrind --tool=cachegrind ./target/release/deps/strobe-5cb1bc954f8de3f1
