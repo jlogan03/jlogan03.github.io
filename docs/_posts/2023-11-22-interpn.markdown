@@ -1,0 +1,81 @@
+---
+layout: post
+title:  "Building a Hypercube Interpolator in Rust"
+date:   2023-11-24 8:00:00 -0400
+categories: jekyll update
+---
+
+### Results
+
+The TL;DR is that we can achieve a **~150x speedup** over the reference (FITPACK via scipy)
+when interpolating at a small number of observation points while **eliminating allocation (!)**
+and staying close to perf parity for larger inputs.
+
+This is particularly relevant to engineering optimization, where differentiation
+workfloads for interpolators typically rely on forward differences that make many
+function calls with a small number of inputs.
+
+Similarly, in fluid or thermal simulation, sim times are often bound to
+overhead from making many calls for a small number of outputs from real-material
+property data tables through an interface such as CoolProp, and this is compounded
+for optimization through such simulations.
+
+<head>
+    <svg viewBox="0 0 1200 800" width=600 height="auto">
+        {% include 2023-11-22/no_prealloc.svg %}
+    </svg>
+</head>
+
+### Rationale
+
+As far as I'm aware, the last and only meaningful work done on general and reusable
+interpolation methods for scientific computing was Dierckx's excellent 1994 textbook
+and the accompanying Fortran library, FITPACK.
+
+The Dierckx FITPACK library has since been absorbed into netlib alongside BLAS and LAPACK,
+and remains under a homebrewed license.
+
+As such, it is usually integrated into other ecosystems as a user-side dependency,
+often in addition to all of the dependencies required to compile Fortran and produce
+bindings in the target language.
+
+FITPACK supports many pieces of functionality that are out of scope here - 
+in particular, Dierckx gives a thorough and performant treatment to _fitting_
+the interpolator coefficients, smoothing, and surface identification,
+often by finding fairly inspired phrasings of fitting problems as quadratic
+programs regardless of the polynomial order of the curvefits.
+
+The goal of this project is not to replicate all of FITPACK's functionality.
+In fact, curve fitting in its entirety is out of scope.
+Instead, this project will focus on the interpolation tasks common in scientific
+computing, which (possibly after some uncertainty-weighted fitting) typically hold a hard requirement on the interpolator reproducing the anchor values exactly.
+
+Unlike fitting and interpolation for graphics, the correctness of the result is
+the highest priority, followed by ergonomics and performance in close succession.
+Smoothing or other manipulation of the data are anti-goals, as they directly
+compromise correctness.
+
+### Tooling
+
+|           | Rust                              | Python              |
+|-----------|-----------------------------------|---------------------|
+| Repo | [interpn](https://github.com/jlogan03/interpn) | [interpnpy](https://github.com/jlogan03/interpnpy) |
+| Docs | [Docs.rs](https://docs.rs/interpn/latest/interpn/)  | [readthedocs w/ mkdocs](https://interpnpy.readthedocs.io/en/latest/) |
+| Benchmark | Criterion                         | timeit w/ warmup    |
+| Lint      | rustfmt & clippy                  | ruff & pyright      |
+| Test      | cargo test                        | pytest & mktestdocs |
+| Release   | release-plz & cargo-semver-checks | maturin & PyO3      |
+
+### Implementation
+
+First, there are three approaches to interpolation on a regular
+or rectilinear grid that I've come across, and I had to choose one.
+* Recursive (like FITPACK)
+* Convolution (as used in GPU libraries)
+* Geometric (no implementations I'm aware of)
+
+The recursive method is likely the most intuitive in addition to being
+fairly performant, and making no compromise on correctness. The idea is
+to interpolate on one axis at a time, projecting the grid cell into
+lower dimensions until finally arriving at a point.
+
