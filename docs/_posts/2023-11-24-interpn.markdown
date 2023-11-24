@@ -25,14 +25,14 @@ Finally, some perf charts-
 Without preallocation of outputs for the methods described here:
 <head>
     <svg viewBox="0 0 1200 800" width=600 height="auto">
-        {% include 2023-11-22/no_prealloc.svg %}
+        {% include 2023-11-24/no_prealloc.svg %}
     </svg>
 </head>
 
 _With_ preallocation of outputs for the methods described here:
 <head>
     <svg viewBox="0 0 1200 800" width=600 height="auto">
-        {% include 2023-11-22/with_prealloc.svg %}
+        {% include 2023-11-24/with_prealloc.svg %}
     </svg>
 </head>
 
