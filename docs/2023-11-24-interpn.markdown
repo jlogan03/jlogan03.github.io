@@ -1,13 +1,8 @@
----
-layout: post
-title:  "Building a Hypercube Interpolator in Rust"
-date:   2023-11-24 8:00:00 -0400
-categories: jekyll update
----
+# 2023-11-24: Building a Hypercube Interpolator (in Rust)
 
 ### Results
 
-The TL;DR is that we can achieve a **~150x speedup** over the reference (FITPACK via scipy)
+The TL;DR is that we can achieve a **10-150x speedup** over the reference (FITPACK via scipy)
 when interpolating at a small number of observation points while **eliminating allocation (!)**
 and staying close to perf parity for larger inputs.
 
@@ -15,38 +10,41 @@ This is particularly relevant to engineering optimization, where differentiation
 workfloads for interpolators typically rely on forward differences that make many
 function calls with a small number of inputs.
 
-Similarly, in fluid or thermal simulation, sim times are often bound to
+Similarly, in electricala, fluid, or thermal simulation, sim times are often bound to
 overhead from making many calls for a small number of outputs from real-material
 property data tables through an interface such as CoolProp, and this is compounded
 for optimization through such simulations.
 
-Finally, some perf charts-
+Finally, some perf charts for a reference case on fair ground: interpolation
+at (pre-selected) random locations inside a 20x20x20 3D grid.
 
 Without preallocation of outputs for the methods described here:
-<head>
-    <svg viewBox="0 0 1200 800" width=600 height="auto">
-        {% include 2023-11-24/no_prealloc.svg %}
-    </svg>
-</head>
+![no_prealloc](assets/2023-11-24/no_prealloc.svg)
+
+Unlike the scipy bindings, the methods presented here
+can evaluate into preallocated output storage.
 
 _With_ preallocation of outputs for the methods described here:
-<head>
-    <svg viewBox="0 0 1200 800" width=600 height="auto">
-        {% include 2023-11-24/with_prealloc.svg %}
-    </svg>
-</head>
+![with_prealloc](assets/2023-11-24/with_prealloc.svg)
 
 Hold on - did they get _worse_ with preallocation? No! This is an artifact of
 the benchmarking process, but one that accentuates the value of eliminating
-allocation. The benchmarks are interleaved (method 1 x100, method 2 x100, method 3 x100, ...), so they see some performance cross-talk through allocation.
+allocation. The benchmarks are interleaved (method 1 x100, method 2 x100, method 3 x100, ...),
+so they see some performance cross-talk through allocation.
 
-Eliminating allocation from the `interpn` methods _significantly improves scipy's performance_ in neighboring benchmarks, despite both methods using an un-instrumented
+Eliminating allocation from the `interpn` methods _significantly improves scipy's performance_
+in neighboring benchmarks, despite both methods using an un-instrumented
 warmup and manually calling python's garbage collector between benchmarks. The
 scipy method is still allocating, it just has less overhead - so improving `interpn`'s
 memory performance by evaluating into a preallocated array helps scipy even more than it
 helps `interpn`. Quite an on-the-nose example of the value of avoiding allocation in application-level code!
 
 ### Rationale
+
+First, a discussion of the state of the art, and why one might bother digging into
+a field that's surely been a solved problem for some time.
+
+#### FITPACK exists
 
 As far as I'm aware, the last and only meaningful work done on general and reusable
 interpolation methods for scientific computing was Dierckx's excellent 1994 textbook
@@ -70,15 +68,20 @@ the interpolator coefficients, smoothing, and surface identification,
 often by finding fairly inspired phrasings of fitting problems as quadratic
 programs regardless of the polynomial order of the curvefits.
 
+#### This is not FITPACK
+
 The goal of this project is not to replicate all of FITPACK's functionality.
 In fact, curve fitting in its entirety is out of scope.
 Instead, this project will focus on the interpolation tasks common in scientific
-computing, which (possibly after some uncertainty-weighted fitting) typically hold a hard requirement on the interpolator reproducing the anchor values exactly.
+computing, which (possibly after some uncertainty-weighted fitting) typically hold
+a hard requirement on the interpolator reproducing the anchor values exactly.
 
 Unlike fitting and interpolation for graphics, the correctness of the result is
 the highest priority, followed by performance and ergonomics in close succession.
 Smoothing or other manipulation of the data are anti-goals, as they directly
 compromise correctness.
+
+#### This is something more specific
 
 Good quality scientific methods for curvefitting are a larger topic than
 interpolation, and while there are surely patterns in the process,
@@ -143,10 +146,13 @@ The convolutional method doesn't make much of a diagram, but it's exceptionally 
 on GPU for image scaling, and generalizes to higher polynomials.
 Unfortunately, it doesn't handle points near the edge of the grid very well, nor
 extrapolation - in fact, its performance gains are directly the product of
-sacrificing both correctness and generality. 
+sacrificing both correctness and generality. You also have to develop the
+footprint coefficients specifically for every dimensionality, and while
+I'm sure there's some series formulation of it similar to how finite difference
+coefficients are tabulated, I have no desire to develop that formulation.
 
 It's excellent for resampling images, and there's a huge market for that,
-but it's not good for much else.
+but it's not quite what's needed for scientific computing.
 
 #### Geometric method
 
@@ -180,7 +186,7 @@ because under extrapolation, it will not extrapolate the derivatives on each axi
 the way that the recursive method does - instead, it produces a purely linear result
 for observation points on both the interior and exterior of the grid.
 
-### Extending the geometric method
+### Extending the geometric method to extrapolation
 
 The geometric method sounds good on paper, but let's see how it holds up
 in a practical implementation. In particular, we need it to work well 
@@ -249,7 +255,7 @@ it doesn't change the overall perf scaling.
 
 <img src="/assets/2023-11-24/2d_extrap_corrected.jpg" alt="2d geometric method extrapolated in corner region, with corrections" width="200"/>
 
-#### Extending to higher dimensions
+### Extending the geometric method to higher dimensions
 
 Well, that's settled, right? It's not, but you get to find out the way I found out -
 after slogging through a 3D implementation.
@@ -286,11 +292,15 @@ of the grid will have the intended effect, same as in 2D.
 Next, a look at the corner region, where we can exercise the fixes that zero-out
 the contribution from the entirely-inside vertex and trim the nonlinear region.
 
+#### A problem in higher dimensions
+
 <img src="/assets/2023-11-24/3d_extrap_corner.jpg" alt="3d geometric method, extrapolating in a corner region" width="200"/>
 
 Uh-oh. Only shading the nonlinear region(s) this time, because that's the catch:
 there isn't just one kind of nonlinear region, and the fix based on the 2D method
 only capture the cubic region, not the quadratic regions.
+
+#### A solution in higher dimensions
 
 It turns out, we can handle this, too - but not by enumerating all of the kinds of
 nonlinear region in higher dimensions. Or at least, I don't know how to do that.
@@ -313,5 +323,19 @@ For practical purposes, this is not too bad, but it is noticeable - about a fact
 also breaks timing guarantees (not ideal for, say, embedded control systems).
 
 With that, we have a method that generalizes to arbitrary dimensions, or at least to
-the 10 dimensions I've tested it in, under both interpolation and extrapolation in every type of region. And it can do this with no allocation (except, possibly, for somewhere
+the 10 dimensions I've tested it in, under both interpolation and extrapolation in every
+type of region. And it can do this with no allocation (except, possibly, for somewhere
 to put the output) and with stack usage that scales linearly in the number of dimensions.
+
+### Next Steps
+
+I am happy to report that due to the efforts of the cargo-semver-checks, release-plz, maturin, and PyO3
+developers, I can gloss over the relatively painless process of releasing the rust library on crates.io,
+generating python bindings, and releasing the python bindings on PyPI.
+
+Instead of agonizing over tooling and processes, I can focus on extending the existing functionality.
+Next on the list, in any particular order that I find inspiration, are:
+* Proper multi-cubic (Hermite spline) interpolation
+* Vectorized alternatives to the multilinear methods here (for the high-throughput and timing-sensitive regimes)
+* Triangular and tetrahedral mesh interpolation
+* Perf optimizations of the python bindings for the existing multilinear interpolators
