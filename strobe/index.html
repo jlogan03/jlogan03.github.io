@@ -44,8 +44,6 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
-    
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -145,6 +143,43 @@
       
     
     
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
     
     
   </nav>
@@ -409,6 +444,15 @@
 
 
 <h1 id="2023-10-21-array-expressions-without-allocation-in-rust">2023-10-21: Array Expressions without Allocation (in Rust)</h1>
+<div>
+  <a href=https://github.com/jlogan03>
+    <img src=https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white height="15" style="padding-right:20px">
+  </a>
+  <a href=https://hachyderm.io/@ponderingpothos>
+    <img src=https://joinmastodon.org/logos/wordmark-black-text.svg width="105" height="15">
+  </a>
+</div>
+
 <h3 id="overview">Overview</h3>
 <ul>
 <li>Github: https://github.com/jlogan03/strobe</li>
@@ -453,13 +497,13 @@ data back and forth from heap-allocated storage, even though this sometimes resu
 more copy events in the code as it is written.</p>
 <p>At this point, there's (1) a lot to gain by eliminating allocation for intermediate results
 and (2) not much to lose by copying data around in intermediate storage on the stack. This
-gives a natural form for the expression data structure and evaluation: </p>
+gives a natural form for the expression data structure and evaluation:</p>
 <ul>
-<li>Structure: Each expression node carries a fixed-size segment of storage just large 
-enough to take advantage of vector operations, with controlled memory alignment to make 
-sure we don't do any unaligned read/write.</li>
-<li>Evaluation: Each expression node populates its fixed storage by operating on data 
-from the fixed storage of its child nodes.</li>
+<li>Structure: Each expression node carries a fixed-size segment of storage just large
+  enough to take advantage of vector operations, with controlled memory alignment to make
+  sure we don't do any unaligned read/write.</li>
+<li>Evaluation: Each expression node populates its fixed storage by operating on data
+  from the fixed storage of its child nodes.</li>
 </ul>
 <p>Dead simple, no allocation, and no clever tricks to confuse the user. Each expression node
 does not need any information other than what its inputs are and what operation to perform -
@@ -473,21 +517,23 @@ through each operator node to the root:</p>
 There's nothing in there that could be removed and leave it still working.</p>
 <h3 id="benchmarks">Benchmarks</h3>
 <h4 id="criterion">Criterion</h4>
-<p>For large source arrays in nontrivial expressions, it is about <strong>2-3x faster</strong> 
+<p>For large source arrays in nontrivial expressions, it is about <strong>2-3x faster</strong>
 than the usual method for ergonomic array operations (allocating storage for each
 intermediate result).</p>
 <p>In fact, because it provides guarantees about the size and
-memory alignment of the chunks of data over which it operates, it is even faster 
+memory alignment of the chunks of data over which it operates, it is even faster
 than performing array operations with the full intermediate arrays pre-allocated
 for most nontrivial applications (at least 3 total array operations).</p>
 <p>This is demonstrated in a set of benchmarks run using Criterion, which
 makes every effort to warm up the system in order to reduce the overhead
 associated with heap allocations. Three categories of benchmarks are run,
-each evaluating the same mathematical operations over the same data:
-1. Slice-style vectorization, allocating for each intermediate result &amp; the output
-2. Slice-style vectorization, evaluating intermediate results into pre-allocated storage,
-   then allocating once for the output
-3. Strobe, using fixed-size intermediate storage on the stack, then allocating once for the output</p>
+each evaluating the same mathematical operations over the same data:</p>
+<ol>
+<li>Slice-style vectorization, allocating for each intermediate result &amp; the output</li>
+<li>Slice-style vectorization, evaluating intermediate results into pre-allocated storage,
+   then allocating once for the output</li>
+<li>Strobe, using fixed-size intermediate storage on the stack, then allocating once for the output</li>
+</ol>
 <p>While the allocation for the output array might give an unnecessarily pessimistic view of
 the maximum throughput of the pre-allocated and Strobe versions of the calc, I believe this
 gives a comparison that is more relevant to common use cases.</p>
@@ -515,7 +561,7 @@ supports this napkin estimate:</p>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>==24414== Copyright (C) 2002-2017, and GNU GPL&#39;d, by Nicholas Nethercote et al.
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>==24414== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>==24414== Command: ./target/release/deps/strobe-5cb1bc954f8de3f1
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>==24414== 
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>==24414==
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>--24414-- warning: L3 cache found, using its data for the LL simulation.
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>running 33 tests
@@ -525,19 +571,19 @@ supports this napkin estimate:</p>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>==24414== 
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>==24414==
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>==24414== I   refs:      1,992,045
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>==24414== I1  misses:       22,729
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>==24414== LLi misses:        4,408
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>==24414== I1  miss rate:      1.14%
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>==24414== LLi miss rate:      0.22%
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>==24414== 
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>==24414==
 </span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>==24414== D   refs:        736,224  (451,692 rd   + 284,532 wr)
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>==24414== D1  misses:       15,937  (  8,971 rd   +   6,966 wr)
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>==24414== LLd misses:        7,806  (  3,756 rd   +   4,050 wr)
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>==24414== D1  miss rate:       2.2% (    2.0%     +     2.4%  )
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>==24414== LLd miss rate:       1.1% (    0.8%     +     1.4%  )
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>==24414== 
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>==24414==
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>==24414== LL refs:          38,666  ( 31,700 rd   +   6,966 wr)
 </span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>==24414== LL misses:        12,214  (  8,164 rd   +   4,050 wr)
 </span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>==24414== LL miss rate:        0.4% (    0.3%     +     1.4%  )
