@@ -1,12 +1,7 @@
----
-layout: post
-title:  "Array Expressions without Allocation"
-date:   2023-10-21 10:05:20 -0400
-categories: jekyll update
----
+# 2023-10-21: Array Expressions without Allocation (in Rust)
 
+### Overview
 
-## Overview
 * Github: https://github.com/jlogan03/strobe
 * Docs: https://docs.rs/crate/strobe/latest
 * Benchmarks: https://github.com/jlogan03/strobe/pull/6
@@ -26,7 +21,8 @@ arrays, but extends this to **expressions of arbitrary depth**, and provides
 useful guarantees to the compiler while **eliminating the need for allocation**
 of intermediate results and **enabling consistent vectorization**.
 
-## Development Process
+### Development Process
+
 This crate started as a thought-experiment using Rust's benchmarking utilities
 on nightly to explore how much of a typical array operation's runtime was related
 to allocation and how much was the actual numerical operations. As it turned out,
@@ -80,8 +76,8 @@ That's it. It's just a tree-structured expression, with no unnecessary fanciness
 There's nothing in there that could be removed and leave it still working.
 
 
-## Benchmarks
-# Criterion
+### Benchmarks
+#### Criterion
 For large source arrays in nontrivial expressions, it is about **2-3x faster** 
 than the usual method for ergonomic array operations (allocating storage for each
 intermediate result).
