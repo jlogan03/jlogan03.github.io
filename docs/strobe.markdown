@@ -68,9 +68,7 @@ and exactly one lifetime bound in play.
 The evaluation takes place by pumping inputs and intermediate values from the leaves (inputs)
 through each operator node to the root:
 
-<head>
-  {% include 2023-10-21/include.html %}
-</head>
+<iframe src="https://drive.google.com/file/d/1tmTpXXSpo6Sy5Hp3cD1lf51jjNYYGlot/preview" width="640" height="480" allow="autoplay"></iframe>
 
 That's it. It's just a tree-structured expression, with no unnecessary fanciness.
 There's nothing in there that could be removed and leave it still working.
