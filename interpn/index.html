@@ -9,8 +9,10 @@
       
       
       
-        <link rel="prev" href="../2023-10-21-strobe/">
+        <link rel="prev" href="..">
       
+      
+        <link rel="next" href="../strobe/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -124,7 +126,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
@@ -134,7 +136,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
@@ -195,26 +197,6 @@
   
   <span class="md-ellipsis">
     Home
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../2023-10-21-strobe/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    2023-10-21: Array Expressions without Allocation (in Rust)
   </span>
   
 
@@ -346,9 +328,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#recurisve-method" class="md-nav__link">
+  <a href="#recursive-method" class="md-nav__link">
     <span class="md-ellipsis">
-      Recurisve method?
+      Recursive method?
     </span>
   </a>
   
@@ -469,6 +451,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strobe/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2023-10-21: Array Expressions without Allocation (in Rust)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -566,9 +568,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#recurisve-method" class="md-nav__link">
+  <a href="#recursive-method" class="md-nav__link">
     <span class="md-ellipsis">
-      Recurisve method?
+      Recursive method?
     </span>
   </a>
   
@@ -820,7 +822,7 @@ or rectilinear grid that I've come across, and I had to choose one.
 * Recursive (like FITPACK)
 * Convolution (as used in GPU libraries)
 * Geometric (no implementations I'm aware of)</p>
-<h4 id="recurisve-method">Recurisve method?</h4>
+<h4 id="recursive-method">Recursive method?</h4>
 <p>The recursive method is fairly intuitive in addition to being
 fairly performant, and making no compromise on correctness or generality.
 The idea is to interpolate on one axis at a time, projecting the grid cell into
@@ -840,7 +842,8 @@ that scales more favorably with the number of dimensions.</p>
 on GPU for image scaling, and generalizes to higher polynomials.
 Unfortunately, it doesn't handle points near the edge of the grid very well, nor
 extrapolation - in fact, its performance gains are directly the product of
-sacrificing both correctness and generality. You also have to develop the
+sacrificing both correctness and generality.</p>
+<p>You also have to develop the
 footprint coefficients specifically for every dimensionality, and while
 I'm sure there's some series formulation of it similar to how finite difference
 coefficients are tabulated, I have no desire to develop that formulation.</p>
