@@ -119,7 +119,7 @@ or rectilinear grid that I've come across, and I had to choose one.
 * Convolution (as used in GPU libraries)
 * Geometric (no implementations I'm aware of)
 
-#### Recurisve method?
+#### Recursive method?
 
 The recursive method is fairly intuitive in addition to being
 fairly performant, and making no compromise on correctness or generality.
@@ -146,7 +146,9 @@ The convolutional method doesn't make much of a diagram, but it's exceptionally 
 on GPU for image scaling, and generalizes to higher polynomials.
 Unfortunately, it doesn't handle points near the edge of the grid very well, nor
 extrapolation - in fact, its performance gains are directly the product of
-sacrificing both correctness and generality. You also have to develop the
+sacrificing both correctness and generality.
+
+You also have to develop the
 footprint coefficients specifically for every dimensionality, and while
 I'm sure there's some series formulation of it similar to how finite difference
 coefficients are tabulated, I have no desire to develop that formulation.
