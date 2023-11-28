@@ -10,7 +10,7 @@ This is particularly relevant to engineering optimization, where differentiation
 workfloads for interpolators typically rely on forward differences that make many
 function calls with a small number of inputs.
 
-Similarly, in electricala, fluid, or thermal simulation, sim times are often bound to
+Similarly, in electrical, fluid, or thermal simulation, sim times are often bound to
 overhead from making many calls for a small number of outputs from real-material
 property data tables through an interface such as CoolProp, and this is compounded
 for optimization through such simulations.
