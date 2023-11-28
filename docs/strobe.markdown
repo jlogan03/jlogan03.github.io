@@ -1,15 +1,24 @@
 # 2023-10-21: Array Expressions without Allocation (in Rust)
 
+<div>
+  <a href=https://github.com/jlogan03>
+    <img src=https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white height="15" style="padding-right:20px">
+  </a>
+  <a href=https://hachyderm.io/@ponderingpothos>
+    <img src=https://joinmastodon.org/logos/wordmark-black-text.svg width="105" height="15">
+  </a>
+</div>
+
 ### Overview
 
-* Github: https://github.com/jlogan03/strobe
-* Docs: https://docs.rs/crate/strobe/latest
-* Benchmarks: https://github.com/jlogan03/strobe/pull/6
-* Tooling
-  * Checking assembly & vectorization recipes: Compiler Explorer & cargo-asm
-  * Benchmarking & perf analysis: criterion & valgrind
-  * Linting: rustfmt & clippy
-  * Release & versioning: release-plz & cargo-semver-checks
+- Github: https://github.com/jlogan03/strobe
+- Docs: https://docs.rs/crate/strobe/latest
+- Benchmarks: https://github.com/jlogan03/strobe/pull/6
+- Tooling
+  - Checking assembly & vectorization recipes: Compiler Explorer & cargo-asm
+  - Benchmarking & perf analysis: criterion & valgrind
+  - Linting: rustfmt & clippy
+  - Release & versioning: release-plz & cargo-semver-checks
 
 Strobe provides fast, low-memory, elementwise array expressions on the stack.
 It is compatible with **no-std** (and **no-alloc**) environments, but _can_ allocate
@@ -52,13 +61,13 @@ more copy events in the code as it is written.
 
 At this point, there's (1) a lot to gain by eliminating allocation for intermediate results
 and (2) not much to lose by copying data around in intermediate storage on the stack. This
-gives a natural form for the expression data structure and evaluation: 
+gives a natural form for the expression data structure and evaluation:
 
-* Structure: Each expression node carries a fixed-size segment of storage just large 
-enough to take advantage of vector operations, with controlled memory alignment to make 
-sure we don't do any unaligned read/write.
-* Evaluation: Each expression node populates its fixed storage by operating on data 
-from the fixed storage of its child nodes.
+- Structure: Each expression node carries a fixed-size segment of storage just large
+  enough to take advantage of vector operations, with controlled memory alignment to make
+  sure we don't do any unaligned read/write.
+- Evaluation: Each expression node populates its fixed storage by operating on data
+  from the fixed storage of its child nodes.
 
 Dead simple, no allocation, and no clever tricks to confuse the user. Each expression node
 does not need any information other than what its inputs are and what operation to perform -
@@ -73,15 +82,16 @@ through each operator node to the root:
 That's it. It's just a tree-structured expression, with no unnecessary fanciness.
 There's nothing in there that could be removed and leave it still working.
 
-
 ### Benchmarks
+
 #### Criterion
-For large source arrays in nontrivial expressions, it is about **2-3x faster** 
+
+For large source arrays in nontrivial expressions, it is about **2-3x faster**
 than the usual method for ergonomic array operations (allocating storage for each
 intermediate result).
 
 In fact, because it provides guarantees about the size and
-memory alignment of the chunks of data over which it operates, it is even faster 
+memory alignment of the chunks of data over which it operates, it is even faster
 than performing array operations with the full intermediate arrays pre-allocated
 for most nontrivial applications (at least 3 total array operations).
 
@@ -89,6 +99,7 @@ This is demonstrated in a set of benchmarks run using Criterion, which
 makes every effort to warm up the system in order to reduce the overhead
 associated with heap allocations. Three categories of benchmarks are run,
 each evaluating the same mathematical operations over the same data:
+
 1. Slice-style vectorization, allocating for each intermediate result & the output
 2. Slice-style vectorization, evaluating intermediate results into pre-allocated storage,
    then allocating once for the output
@@ -116,6 +127,7 @@ differences in cache size and memory performance. Results from both systems used
 and for more calculations are available [here](https://github.com/jlogan03/strobe/pull/6).
 
 # Cachegrind
+
 Unit tests use arrays of size 67, 3 more than the intermediate storage size of 64, in order to
 make sure that we visit the behavior of the system when it sees storage that is neither full
 nor empty in a given cycle. The first 64 values will be consistently vectorized and cached properly,
@@ -129,7 +141,7 @@ jlogan@jlogan-MS-7C56:~/git/strobe$ valgrind --tool=cachegrind ./target/release/
 ==24414== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.
 ==24414== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
 ==24414== Command: ./target/release/deps/strobe-5cb1bc954f8de3f1
-==24414== 
+==24414==
 --24414-- warning: L3 cache found, using its data for the LL simulation.
 
 running 33 tests
@@ -139,19 +151,19 @@ test test_std::test_std ... ok
 
 test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
 
-==24414== 
+==24414==
 ==24414== I   refs:      1,992,045
 ==24414== I1  misses:       22,729
 ==24414== LLi misses:        4,408
 ==24414== I1  miss rate:      1.14%
 ==24414== LLi miss rate:      0.22%
-==24414== 
+==24414==
 ==24414== D   refs:        736,224  (451,692 rd   + 284,532 wr)
 ==24414== D1  misses:       15,937  (  8,971 rd   +   6,966 wr)
 ==24414== LLd misses:        7,806  (  3,756 rd   +   4,050 wr)
 ==24414== D1  miss rate:       2.2% (    2.0%     +     2.4%  )
 ==24414== LLd miss rate:       1.1% (    0.8%     +     1.4%  )
-==24414== 
+==24414==
 ==24414== LL refs:          38,666  ( 31,700 rd   +   6,966 wr)
 ==24414== LL misses:        12,214  (  8,164 rd   +   4,050 wr)
 ==24414== LL miss rate:        0.4% (    0.3%     +     1.4%  )

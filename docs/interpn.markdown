@@ -1,5 +1,14 @@
 # 2023-11-24: Building a Hypercube Interpolator (in Rust)
 
+<div>
+  <a href=https://github.com/jlogan03>
+    <img src=https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white height="15" style="padding-right:20px">
+  </a>
+  <a href=https://hachyderm.io/@ponderingpothos>
+    <img src=https://joinmastodon.org/logos/wordmark-black-text.svg width="105" height="15">
+  </a>
+</div>
+
 ### Results
 
 The TL;DR is that we can achieve a **10-150x speedup** over the reference (FITPACK via scipy)
