@@ -807,17 +807,19 @@ compromise correctness.</p>
 <p>Good quality scientific methods for curvefitting are a larger topic than
 interpolation, and while there are surely patterns in the process,
 those methods also tend to be fairly bespoke to the problem under examination.</p>
-<p>Functionality goals
-* Evaluation of values (and later, gradient and hessian entries) for exact interpolators
-in Rust
-* Self-contained (evaluate using only grid locations and data values)
-  * Avoid the need for another program or library to provide spline knots, etc
-* Clear and permissive licensing
-* Convenient, structured, and version-controlled build process
-* Convenient inter-languge interop &amp; first-class support for bindings
-* Compatibility with embedded and high-performance systems (no allocation)
-* Smooth transition from interpolation to extrapolation (to support solvers)
-* Separation of bounds error checking from interpolation/extrapolation (to support solvers)</p>
+<p>Functionality goals</p>
+<ul>
+<li>Evaluation of values (and later, gradient and hessian entries) for exact interpolators
+in Rust</li>
+<li>Self-contained (evaluate using only grid locations and data values)</li>
+<li>Avoid the need for another program or library to provide spline knots, etc</li>
+<li>Clear and permissive licensing</li>
+<li>Convenient, structured, and version-controlled build process</li>
+<li>Convenient inter-languge interop &amp; first-class support for bindings</li>
+<li>Compatibility with embedded and high-performance systems (no allocation)</li>
+<li>Smooth transition from interpolation to extrapolation (to support solvers)</li>
+<li>Separation of bounds error checking from interpolation/extrapolation (to support solvers)</li>
+</ul>
 <h3 id="tooling">Tooling</h3>
 <table>
 <thead>
