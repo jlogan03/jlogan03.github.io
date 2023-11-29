@@ -97,6 +97,7 @@ interpolation, and while there are surely patterns in the process,
 those methods also tend to be fairly bespoke to the problem under examination.
 
 Functionality goals
+
 * Evaluation of values (and later, gradient and hessian entries) for exact interpolators
 in Rust
 * Self-contained (evaluate using only grid locations and data values)
