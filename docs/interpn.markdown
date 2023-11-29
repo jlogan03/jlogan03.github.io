@@ -347,6 +347,7 @@ generating python bindings, and releasing the python bindings on PyPI.
 
 Instead of agonizing over tooling and processes, I can focus on extending the existing functionality.
 Next on the list, in any particular order that I find inspiration, are:
+
 * Proper multi-cubic (Hermite spline) interpolation
 * Vectorized alternatives to the multilinear methods here (for the high-throughput and timing-sensitive regimes)
 * Triangular and tetrahedral mesh interpolation
