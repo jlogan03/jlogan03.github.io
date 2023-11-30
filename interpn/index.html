@@ -395,6 +395,66 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#finding-the-grid-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Finding the grid cell
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Finding the grid cell">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regular-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regular grid
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rectilinear-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rectilinear grid
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bagging-the-memory-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bagging the memory scaling
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reinventing-the-wheel-indexing-into-an-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reinventing the wheel (indexing into an array)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doing-interpolation-with-the-geometric-method-is-easy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Doing interpolation with the geometric method is easy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#extending-the-geometric-method-to-extrapolation" class="md-nav__link">
     <span class="md-ellipsis">
       Extending the geometric method to extrapolation
@@ -635,6 +695,66 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#finding-the-grid-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Finding the grid cell
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Finding the grid cell">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regular-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regular grid
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rectilinear-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rectilinear grid
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bagging-the-memory-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bagging the memory scaling
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reinventing-the-wheel-indexing-into-an-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reinventing the wheel (indexing into an array)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doing-interpolation-with-the-geometric-method-is-easy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Doing interpolation with the geometric method is easy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#extending-the-geometric-method-to-extrapolation" class="md-nav__link">
     <span class="md-ellipsis">
       Extending the geometric method to extrapolation
@@ -743,6 +863,7 @@
   </a>
 </div>
 
+<p>Edited on 2023-11-30 to add more implementation details.</p>
 <h3 id="results">Results</h3>
 <p>The TL;DR is that we can achieve a <strong>10-150x speedup</strong> over the reference (FITPACK via scipy)
 when interpolating at a small number of observation points while <strong>eliminating allocation (!)</strong>
@@ -919,6 +1040,262 @@ minor contributor to float error compared to addition and subtraction.</p>
 because under extrapolation, it will not extrapolate the derivatives on each axis
 the way that the recursive method does - instead, it produces a purely linear result
 for observation points on both the interior and exterior of the grid.</p>
+<h3 id="finding-the-grid-cell">Finding the grid cell</h3>
+<p>Regardless of the choice of method, we'll always need to know what grid
+cell the observation point lands in, in order to know which tabulated
+values contribute to the interpolated result.</p>
+<h4 id="regular-grid">Regular grid</h4>
+<p>For regular grids where all the grid locations are evenly spaced,
+this is logically easy if we're inside the grid:</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// for some observation point coordinate `x`</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kd">let</span><span class="w"> </span><span class="n">int_loc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">grid_start</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grid_step</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span>
+</span></code></pre></div>
+<p>It gets a little more complicated when we consider that the
+point may be outside the grid, in which case we need to snap
+to the grid:</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">let</span><span class="w"> </span><span class="n">int_loc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(((</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">grid_start</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grid_step</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">              </span><span class="p">.</span><span class="n">min</span><span class="p">(</span><span class="n">grid_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">              </span><span class="p">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span></code></pre></div>
+<p>But wait - we can't actually represent a value below zero as a usize,
+so we need a stop over as a signed integer to represent extrapolation
+below the grid without integer overflow:</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">let</span><span class="w"> </span><span class="n">int_loc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(((</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">grid_start</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grid_step</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">isize</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">              </span><span class="p">.</span><span class="n">min</span><span class="p">(</span><span class="n">grid_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">              </span><span class="p">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">              </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span>
+</span></code></pre></div>
+<p>We can't acturally run that yet, though, because we can't just
+<code>as isize</code> and <code>as usize</code> a generic float type.</p>
+<p>Converting a float to an integer also isn't exactly a clear and concise
+operation - it can be done sketchily with a handful of bit shift mask
+operations, but to produce a correct result in general, and to avoid
+harmful edge cases, is not always possible, and we may have to
+generate an error here to avoid returning an incorrect result.</p>
+<p>Our observation point <code>x</code> is a generic <code>T: Float</code> using num_traits
+to generalize over <code>f32</code> and <code>f64</code>. In order to also capture safe
+typecasting, we can add another trait from num_traits, <code>NumCast</code>.</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">let</span><span class="w"> </span><span class="n">floc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">grid_start</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grid_step</span><span class="p">);</span><span class="w"> </span><span class="c1">// Float location</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">let</span><span class="w"> </span><span class="n">iloc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="kt">isize</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">NumCast</span><span class="o">&gt;</span>::<span class="n">from</span><span class="p">(</span><span class="n">floc</span><span class="p">).</span><span class="n">unwrap</span><span class="p">();</span><span class="w"> </span><span class="c1">// Signed integer location</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kd">let</span><span class="w"> </span><span class="n">uloc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iloc</span><span class="p">.</span><span class="n">min</span><span class="p">(</span><span class="n">grid_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">).</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w">  </span><span class="c1">// Usable unsigned index</span>
+</span></code></pre></div>
+<p>That got a little weird, and there's a conspicuous <code>unwrap()</code> there:
+in fact, this is expected, because if we ever try to convert, say, a NaN
+value, or a value larger than <code>isize::MAX</code>, we'll have a real
+un-handleable error that needs to propagate to prevent the method
+from returning a genuinely incorrect result.</p>
+<h4 id="rectilinear-grid">Rectilinear grid</h4>
+<p>For a rectilinear grid, we have an uneven spacing of grid cells on each axis.
+This means that in general, we're not sure exactly where a given observation point
+lands in the grid until we check it against the grid values.</p>
+<p>If we don't know anything about the location of the observation point other than
+that it's more likely to be inside the grid than outside, then a bisection
+search is the theoretical optimum for finding the grid index.</p>
+<p>The Rust core library implements an excellent binary search, which we can use via the
+<code>slice::partition_point()</code> interface.</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">let</span><span class="w"> </span><span class="n">uloc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">.</span><span class="n">partition_point</span><span class="p">(</span><span class="o">|</span><span class="n">v</span><span class="o">|</span><span class="w"> </span><span class="o">*</span><span class="n">v</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">x</span><span class="p">);</span>
+</span></code></pre></div>
+<p>In practice, the simplicity gets engineered out of it to handle extrapolation
+in a similar way to what happened with the regular grid method, but that's the
+core of the idea.</p>
+<h3 id="bagging-the-memory-scaling">Bagging the memory scaling</h3>
+<p>The improved memory scaling of the geometric method only holds if we can visit 
+the vertices of a given grid cell
+one by one, accumulating the contribution of each one before moving to the next.
+The value accumulated from each vertex doesn't depend on the others, so it works out
+in terms of the flow of information - but there are <code>2^ndims</code> vertices to visit.</p>
+<p>The usual solution for visiting all of them would be something like itertools'
+multi_cartesian_product - but this requires the standard library, and in order to
+actually access all of the indices at once, we'd still end up actualizing all <code>2^ndims</code>
+vertices at once, breaking the <code>O(ndims)</code> memory scaling.</p>
+<p>Starting with the index of the lower corner of the grid cell, we can represent
+each vertex in terms of an array like <code>[bool; ndims]</code> where each entry is
+the index offset from that lower corner to the current vertex.</p>
+<p>Ultimately, we need to get one row at a time out of a table like this:</p>
+<table>
+<thead>
+<tr>
+<th>dim</th>
+<th>2</th>
+<th>1</th>
+<th>0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>offset</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td></td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td></td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td></td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>If we don't mind some integer operations, we can actually formulate this
+table one at a time by keeping a running record of the index offset, and
+flipping the index of each dimension one at a time every <code>2^dim</code> indices:</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// In a loop to examine the vertices one at a time...</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">ioffs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="kt">bool</span><span class="p">;</span><span class="w"> </span><span class="n">ndims</span><span class="p">];</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kd">let</span><span class="w"> </span><span class="n">nverts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.</span><span class="n">powi</span><span class="p">(</span><span class="n">ndims</span><span class="p">);</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">nverts</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="c1">// Every 2^nth vertex, flip which side of the cube we are examining</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="c1">// in the nth dimension.</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="c1">//</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="c1">// Because i % 2^n has double the period for each sequential n,</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="c1">// and their phase is only aligned once every 2^n for the largest</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="c1">// n in the set, this is guaranteed to produce a path that visits</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="c1">// each vertex exactly once.</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">ndims</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">flip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">2_</span><span class="k">usize</span><span class="p">.</span><span class="n">pow</span><span class="p">(</span><span class="n">j</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u32</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">flip</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">            </span><span class="n">ioffs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">!</span><span class="n">ioffs</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="c1">// ... then accumulate the contribution of the vertex</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>So with that, we have no-std and limited-memory version of
+multi_cartesian_product specialized to this usage, and
+we only need to store a tiny number of values to run it.</p>
+<p>The cost comes in compute, but ultimately, integer mod with a base that is
+a power of 2 is not expensive. In any case, this compute has to happen
+<em>somewhere</em>, and it may as well be here.</p>
+<p>Doing this mod operation with manually-assembled bit-shift operations does
+not improve performance. I haven't looked too hard at the assembly, but
+I'd bet that's because the compiler knows what's up.</p>
+<h3 id="reinventing-the-wheel-indexing-into-an-array">Reinventing the wheel (indexing into an array)</h3>
+<p>Ok, well, now that we have the vertex, we're still not quite ready to
+start accumulating the contribution. First, we need to get the grid
+value associated with that vertex.</p>
+<p>Without any external dependencies on array libraries, that means
+writing our own array indexing.</p>
+<p>Assuming we've got a contiguous input array that was formulated from
+C-style interleaved inputs from an <code>N x M</code> coordinate grid,
+the values are ordered like this:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>[
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  z(x0, y0), ... , z(x0, yM),
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  z(x1, y0), ... , z(x1, yM), 
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  ...
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  z(xN, y0), ... , z(xN, yM)
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>]
+</span></code></pre></div>
+<p>In order to know where to find each row, column, or whatever you call the
+flakes of an array in the higher dimensions, we need to skip the cumulative
+product of the sizes of all the higher dimensions in order to find the next
+flake of the lower dimension.</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Sometime before the loop, accumulate the cumulative product</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// of sizes of each dimension of the grid</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">// Populate cumulative product of higher dimensions for indexing.</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1">//</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1">// Each entry is the cumulative product of the size of dimensions</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1">// higher than this one, which is the stride between blocks</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1">// relating to a given index along each dimension.</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">dimprod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">1_</span><span class="n">usise</span><span class="p">;</span><span class="w"> </span><span class="n">ndims</span><span class="p">];</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="n">ndims</span><span class="p">).</span><span class="n">for_each</span><span class="p">(</span><span class="o">|</span><span class="n">i</span><span class="o">|</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="n">dimprod</span><span class="p">[</span><span class="n">ndims</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">acc</span><span class="p">;</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">    </span><span class="n">acc</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">dims</span><span class="p">[</span><span class="n">ndims</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">];</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="p">});</span><span class="w">  </span><span class="c1">// This doesn&#39;t quite work as a .fold()</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">nverts</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">    </span><span class="c1">//  ... sometime later in the loop where we did some shenanigans</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">    </span><span class="c1">//      with a mod operation to find the `ioffs` entries</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="w">    </span><span class="c1">// Accumulate the index into the value array,</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="w">    </span><span class="c1">// saturating to the bound if the resulting index would be outside.</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">ndims</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="w">        </span><span class="n">k</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">dimprod</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="w">            </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">origin</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">ioffs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">).</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">dims</span><span class="p">[</span><span class="n">j</span><span class="p">].</span><span class="n">saturating_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>
+</span><span id="__span-7-28"><a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="w">    </span><span class="c1">// ... then, maybe, finally, accumulate the contribution of the vertex</span>
+</span><span id="__span-7-29"><a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>That expanded a bit from concept to execution, but it's also one of the places
+where Rust's particulars shine: the <code>saturating_{op}</code> functions are really excellent for doing safe indexing, and while they may represent extra
+operations in some places, usually wherever there's a <code>saturating_{op}</code>,
+there's a slice indexing bounds check that can be optimized out.</p>
+<p>And since we're examining extrapolation as well as interpolation,
+these indexing edge cases aren't academic -
+they're the product.</p>
+<h3 id="doing-interpolation-with-the-geometric-method-is-easy">Doing interpolation with the geometric method is easy</h3>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">interped</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">T</span>::<span class="n">zero</span><span class="p">();</span><span class="w"> </span><span class="c1">// The accumulated interpolated value</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">nverts</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="c1">//  ... sometime later in the loop where we did some shenanigans</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="c1">//      with a mod operation to find the `ioffs` entries</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="c1">//      and after we hand-roll array indexing</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="c1">// Get the value at this vertex</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vals</span><span class="p">[</span><span class="n">k</span><span class="p">];</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span><span class="c1">// Find the vector from the opposite vertex to the observation point</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">dxs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="n">T</span>::<span class="n">zero</span><span class="p">();</span><span class="w"> </span><span class="n">ndims</span><span class="p">];</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">ndims</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">        </span><span class="c1">// Populate dxs[j] with the (unsigned) vector</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="c1">// Accumulate contribution from this vertex</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">!</span><span class="n">extrapolating</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">        </span><span class="c1">// Interpolating is easy! Just do a cumulative product</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="w">        </span><span class="c1">// to get the sub-cell volume for this vertex which</span>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">        </span><span class="c1">// tells us its weight in the weighted average</span>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">vol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dxs</span><span class="p">.</span><span class="n">iter</span><span class="p">().</span><span class="n">fold</span><span class="p">(</span><span class="n">T</span>::<span class="n">one</span><span class="p">(),</span><span class="w"> </span><span class="o">|</span><span class="n">acc</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="o">|</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">*</span><span class="n">x</span><span class="p">);</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">        </span><span class="n">interped</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">interped</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">vol</span><span class="p">;</span>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">      </span><span class="c1">// Extrapolating</span>
+</span><span id="__span-8-26"><a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">      </span><span class="c1">// ...</span>
+</span><span id="__span-8-27"><a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-8-28"><a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="p">}</span>
+</span><span id="__span-8-29"><a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+</span><span id="__span-8-30"><a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="c1">// Return the interpolated total, dividing through by the total</span>
+</span><span id="__span-8-31"><a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="c1">// cell volume just one time at the end</span>
+</span><span id="__span-8-32"><a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="n">interped</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">cell_vol</span>
+</span></code></pre></div>
 <h3 id="extending-the-geometric-method-to-extrapolation">Extending the geometric method to extrapolation</h3>
 <p>The geometric method sounds good on paper, but let's see how it holds up
 in a practical implementation. In particular, we need it to work well 
