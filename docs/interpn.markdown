@@ -9,6 +9,8 @@
   </a>
 </div>
 
+Edited on 2023-11-30 to add more implementation details.
+
 ### Results
 
 The TL;DR is that we can achieve a **10-150x speedup** over the reference (FITPACK via scipy)
@@ -197,6 +199,264 @@ Third, it may actually be more correct, in a sense, than the recursive method,
 because under extrapolation, it will not extrapolate the derivatives on each axis
 the way that the recursive method does - instead, it produces a purely linear result
 for observation points on both the interior and exterior of the grid.
+
+### Finding the grid cell
+
+Regardless of the choice of method, we'll always need to know what grid
+cell the observation point lands in, in order to know which tabulated
+values contribute to the interpolated result.
+
+#### Regular grid
+
+For regular grids where all the grid locations are evenly spaced,
+this is logically easy if we're inside the grid:
+
+```rust
+// for some observation point coordinate `x`
+let int_loc = ((x - grid_start) / grid_step) as usize;
+```
+
+It gets a little more complicated when we consider that the
+point may be outside the grid, in which case we need to snap
+to the grid:
+
+```rust
+let int_loc = (((x - grid_start) / grid_step) as usize)
+              .min(grid_size - 1)
+              .max(0);
+```
+
+But wait - we can't actually represent a value below zero as a usize,
+so we need a stop over as a signed integer to represent extrapolation
+below the grid without integer overflow:
+
+```rust
+let int_loc = (((x - grid_start) / grid_step) as isize)
+              .min(grid_size - 1)
+              .max(0) 
+              as usize;
+```
+
+We can't acturally run that yet, though, because we can't just
+`as isize` and `as usize` a generic float type.
+
+Converting a float to an integer also isn't exactly a clear and concise
+operation - it can be done sketchily with a handful of bit shift mask
+operations, but to produce a correct result in general, and to avoid
+harmful edge cases, is not always possible, and we may have to
+generate an error here to avoid returning an incorrect result.
+
+Our observation point `x` is a generic `T: Float` using num_traits
+to generalize over `f32` and `f64`. In order to also capture safe
+typecasting, we can add another trait from num_traits, `NumCast`.
+
+```rust
+let floc = (x - grid_start) / grid_step); // Float location
+let iloc = <isize as NumCast>::from(floc).unwrap(); // Signed integer location
+let uloc = iloc.min(grid_size - 1).max(0) as usize;  // Usable unsigned index
+```
+
+That got a little weird, and there's a conspicuous `unwrap()` there:
+in fact, this is expected, because if we ever try to convert, say, a NaN
+value, or a value larger than `isize::MAX`, we'll have a real
+un-handleable error that needs to propagate to prevent the method
+from returning a genuinely incorrect result.
+
+#### Rectilinear grid
+
+For a rectilinear grid, we have an uneven spacing of grid cells on each axis.
+This means that in general, we're not sure exactly where a given observation point
+lands in the grid until we check it against the grid values.
+
+If we don't know anything about the location of the observation point other than
+that it's more likely to be inside the grid than outside, then a bisection
+search is the theoretical optimum for finding the grid index.
+
+The Rust core library implements an excellent binary search, which we can use via the
+`slice::partition_point()` interface.
+
+```rust
+let uloc = grid.partition_point(|v| *v < x);
+```
+
+In practice, the simplicity gets engineered out of it to handle extrapolation
+in a similar way to what happened with the regular grid method, but that's the
+core of the idea.
+
+### Bagging the memory scaling
+
+The improved memory scaling of the geometric method only holds if we can visit 
+the vertices of a given grid cell
+one by one, accumulating the contribution of each one before moving to the next.
+The value accumulated from each vertex doesn't depend on the others, so it works out
+in terms of the flow of information - but there are `2^ndims` vertices to visit.
+
+The usual solution for visiting all of them would be something like itertools'
+multi_cartesian_product - but this requires the standard library, and in order to
+actually access all of the indices at once, we'd still end up actualizing all `2^ndims`
+vertices at once, breaking the `O(ndims)` memory scaling.
+
+Starting with the index of the lower corner of the grid cell, we can represent
+each vertex in terms of an array like `[bool; ndims]` where each entry is
+the index offset from that lower corner to the current vertex.
+
+Ultimately, we need to get one row at a time out of a table like this:
+
+
+| dim    | 2 | 1 | 0 |
+|--------|---|---|---|
+| offset | 0 | 0 | 0 |
+|        | 0 | 0 | 1 |
+|        | 0 | 1 | 0 |
+|        | 0 | 1 | 1 |
+|        | 1 | 0 | 0 |
+|        | 1 | 0 | 1 |
+|        | 1 | 1 | 0 |
+|        | 1 | 1 | 1 |
+
+If we don't mind some integer operations, we can actually formulate this
+table one at a time by keeping a running record of the index offset, and
+flipping the index of each dimension one at a time every `2^dim` indices:
+
+```rust
+// In a loop to examine the vertices one at a time...
+let mut ioffs = [bool; ndims];
+let nverts = 2.powi(ndims);
+for i in 0..nverts {
+    // Every 2^nth vertex, flip which side of the cube we are examining
+    // in the nth dimension.
+    //
+    // Because i % 2^n has double the period for each sequential n,
+    // and their phase is only aligned once every 2^n for the largest
+    // n in the set, this is guaranteed to produce a path that visits
+    // each vertex exactly once.
+    for j in 0..ndims {
+        let flip = i % 2_usize.pow(j as u32) == 0;
+        if flip {
+            ioffs[j] = !ioffs[j];
+        }
+    }
+
+    // ... then accumulate the contribution of the vertex
+}
+```
+
+So with that, we have no-std and limited-memory version of
+multi_cartesian_product specialized to this usage, and
+we only need to store a tiny number of values to run it.
+
+The cost comes in compute, but ultimately, integer mod with a base that is
+a power of 2 is not expensive. In any case, this compute has to happen
+_somewhere_, and it may as well be here.
+
+Doing this mod operation with manually-assembled bit-shift operations does
+not improve performance. I haven't looked too hard at the assembly, but
+I'd bet that's because the compiler knows what's up.
+
+### Reinventing the wheel (indexing into an array)
+
+Ok, well, now that we have the vertex, we're still not quite ready to
+start accumulating the contribution. First, we need to get the grid
+value associated with that vertex.
+
+Without any external dependencies on array libraries, that means
+writing our own array indexing.
+
+Assuming we've got a contiguous input array that was formulated from
+C-style interleaved inputs from an `N x M` coordinate grid,
+the values are ordered like this:
+
+```
+[
+  z(x0, y0), ... , z(x0, yM),
+  z(x1, y0), ... , z(x1, yM), 
+  ...
+  z(xN, y0), ... , z(xN, yM)
+]
+```
+
+In order to know where to find each row, column, or whatever you call the
+flakes of an array in the higher dimensions, we need to skip the cumulative
+product of the sizes of all the higher dimensions in order to find the next
+flake of the lower dimension.
+
+```rust
+// Sometime before the loop, accumulate the cumulative product
+// of sizes of each dimension of the grid
+
+// Populate cumulative product of higher dimensions for indexing.
+//
+// Each entry is the cumulative product of the size of dimensions
+// higher than this one, which is the stride between blocks
+// relating to a given index along each dimension.
+let mut dimprod = [1_usise; ndims];
+let mut acc = 1;
+(0..ndims).for_each(|i| {
+    dimprod[ndims - i - 1] = acc;
+    acc *= self.dims[ndims - i - 1];
+});  // This doesn't quite work as a .fold()
+
+for i in 0..nverts {
+    //  ... sometime later in the loop where we did some shenanigans
+    //      with a mod operation to find the `ioffs` entries
+
+    // Accumulate the index into the value array,
+    // saturating to the bound if the resulting index would be outside.
+    let mut k = 0;
+    for j in 0..ndims {
+        k += dimprod[j]
+            * (origin[j] + ioffs[j] as usize).min(self.dims[j].saturating_sub(1));
+    }
+
+    // ... then, maybe, finally, accumulate the contribution of the vertex
+}
+```
+
+That expanded a bit from concept to execution, but it's also one of the places
+where Rust's particulars shine: the `saturating_{op}` functions are really excellent for doing safe indexing, and while they may represent extra
+operations in some places, usually wherever there's a `saturating_{op}`,
+there's a slice indexing bounds check that can be optimized out.
+
+And since we're examining extrapolation as well as interpolation,
+these indexing edge cases aren't academic -
+they're the product.
+
+### Doing interpolation with the geometric method is easy
+
+```rust
+let mut interped = T::zero(); // The accumulated interpolated value
+for i in 0..nverts {
+    //  ... sometime later in the loop where we did some shenanigans
+    //      with a mod operation to find the `ioffs` entries
+    //      and after we hand-roll array indexing
+
+    // Get the value at this vertex
+    let v = vals[k];
+
+    // Find the vector from the opposite vertex to the observation point
+    let mut dxs = [T::zero(); ndims];
+    for j in 0..ndims {
+        // Populate dxs[j] with the (unsigned) vector
+    }
+
+    // Accumulate contribution from this vertex
+    if !extrapolating {
+        // Interpolating is easy! Just do a cumulative product
+        // to get the sub-cell volume for this vertex which
+        // tells us its weight in the weighted average
+        let vol = dxs.iter().fold(T::one(), |acc, x| acc * *x);
+        interped = interped + v * vol;
+    }
+    else {
+      // Extrapolating
+      // ...
+    }
+}
+
+// Return the interpolated total, dividing through by the total
+// cell volume just one time at the end
+interped / cell_vol
+```
 
 ### Extending the geometric method to extrapolation
 
