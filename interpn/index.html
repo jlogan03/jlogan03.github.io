@@ -1033,15 +1033,15 @@ needed simultaneously per observation point.</p>
 <p>Second, it is better-positioned to <strong>avoid floating point error</strong> due to aggregating the
 contribution from each of the grid cell vertices simultaneously (a sum of products)
 rather than the recursive method's long chain of alternating subtractions, divisions,
-and multiplications. In fact, division is eliminated entirely, and the longest chain
-of error-prone add or sub operations is of a constant length 2 instead of length <code>ndims</code>.
+and multiplications. In fact, division is eliminated from intermediate steps entirely,
+and the longest chain of error-prone add or sub operations is of a constant length 2
+instead of length <code>ndims</code>.
 The longest chain of multiplications is <code>ndims</code>, but only one division is required per
 observation point regardless of dimensionality, and multiplications are a relatively
 minor contributor to float error compared to addition and subtraction.</p>
 <p>Third, it may actually be more correct, in a sense, than the recursive method,
-because under extrapolation, it will not extrapolate the derivatives on each axis
-the way that the recursive method does - instead, it produces a purely linear result
-for observation points on both the interior and exterior of the grid.</p>
+because under extrapolation in corner regions, it will not extrapolate the derivatives
+on each axis the way that the recursive method does.</p>
 <h3 id="finding-the-grid-cell">Finding the grid cell</h3>
 <p>Regardless of the choice of method, we'll always need to know what grid
 cell the observation point lands in, in order to know which tabulated
