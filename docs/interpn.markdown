@@ -127,6 +127,7 @@ in Rust
 
 First, there are three approaches to interpolation on a regular
 or rectilinear grid that I've come across, and I had to choose one.
+
 * Recursive (like FITPACK)
 * Convolution (as used in GPU libraries)
 * Geometric (no implementations I'm aware of)
