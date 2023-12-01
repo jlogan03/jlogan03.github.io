@@ -18,7 +18,7 @@ when interpolating at a small number of observation points while **eliminating a
 and staying close to perf parity for larger inputs.
 
 This is particularly relevant to engineering optimization, where differentiation
-workfloads for interpolators typically rely on forward differences that make many
+workloads for interpolators typically rely on forward differences that make many
 function calls with a small number of inputs.
 
 Similarly, in electrical, fluid, or thermal simulation, sim times are often bound to
