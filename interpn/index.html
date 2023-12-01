@@ -985,10 +985,12 @@ in Rust</li>
 </table>
 <h3 id="implementation-selecting-a-method">Implementation: selecting a method</h3>
 <p>First, there are three approaches to interpolation on a regular
-or rectilinear grid that I've come across, and I had to choose one.
-* Recursive (like FITPACK)
-* Convolution (as used in GPU libraries)
-* Geometric (no implementations I'm aware of)</p>
+or rectilinear grid that I've come across, and I had to choose one.</p>
+<ul>
+<li>Recursive (like FITPACK)</li>
+<li>Convolution (as used in GPU libraries)</li>
+<li>Geometric (no implementations I'm aware of)</li>
+</ul>
 <h4 id="recursive-method">Recursive method?</h4>
 <p>The recursive method is fairly intuitive in addition to being
 fairly performant, and making no compromise on correctness or generality.
